@@ -18,8 +18,8 @@ export interface Conexao {
   host: string;
   port: number;
   user: string;
-  /** Usuário do painel (pedweb_admin.usuarios) depois do login */
-  usuario?: UsuarioPainel;
+  /** Usuário do painel (pedweb_admin.usuarios) desta sessão */
+  usuario: UsuarioPainel;
 }
 
 export interface UsuarioPainel {
@@ -31,7 +31,8 @@ export interface UsuarioPainel {
   colunaId: string;
 }
 
-const conexoes = new Map<string, Conexao>();
+/** Pools por conta de MySQL, reaproveitados enquanto o processo viver */
+const pools = new Map<string, mysql.Pool>();
 
 /** Credenciais do painel para a base pedweb_admin (arquivo .env) */
 export const CONFIG_PAINEL = {
@@ -72,38 +73,34 @@ export const PREFIXO_BASE = 'pedweb';
 /** Base do próprio painel (usuários, preferências): nunca aparece na lista nem é administrada */
 export const BASE_ADMIN = 'pedweb_admin';
 
-export async function abrirConexao(host: string, port: number, user: string, password: string) {
-  const pool = mysql.createPool({
-    host,
-    port,
-    user,
-    password,
-    waitForConnections: true,
-    connectionLimit: 5,
-    connectTimeout: 15000,
-    enableKeepAlive: true,
-    keepAliveInitialDelay: 10000,
-    dateStrings: true,
-  });
-  try {
-    await pool.query('SELECT 1');
-  } catch (err) {
-    await pool.end().catch(() => {});
-    throw err;
+/**
+ * Pool de uma conta de MySQL (sem base fixa: as consultas qualificam `base`.`tabela`).
+ * A senha só existe aqui e na linha do usuário em pedweb_admin.
+ */
+export function poolPara(host: string, port: number, user: string, password: string): mysql.Pool {
+  const chave = `${host}:${port}:${user}`;
+  let pool = pools.get(chave);
+  if (!pool) {
+    pool = mysql.createPool({
+      host,
+      port,
+      user,
+      password,
+      waitForConnections: true,
+      connectionLimit: 5,
+      connectTimeout: 15000,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10000,
+      dateStrings: true,
+    });
+    pools.set(chave, pool);
   }
-  const token = crypto.randomUUID();
-  conexoes.set(token, { pool, host, port, user });
-  return token;
+  return pool;
 }
 
-export function obterConexao(token: string): Conexao | null {
-  return conexoes.get(token) || null;
-}
-
-export async function fecharConexao(token: string) {
-  const c = conexoes.get(token);
-  conexoes.delete(token);
-  await c?.pool.end().catch(() => {});
+/** Confere se a conta conecta; usado no login, para o erro aparecer cedo */
+export async function testarConexao(host: string, port: number, user: string, password: string) {
+  await poolPara(host, port, user, password).query('SELECT 1');
 }
 
 /** Identificador MySQL entre crases, escapando crases internas */

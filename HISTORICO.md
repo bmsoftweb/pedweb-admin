@@ -1,5 +1,13 @@
 # Histórico
 
+## 0.0.2 — 02/10/2026
+
+- Deploy na Vercel: o app Express virou `createApp()` servido por `api/index.ts`, com o `vercel.json`
+  roteando `/api/*`. Antes, em produção, nenhuma rota de API existia (HTTP 404 no login).
+- Sessão sem estado: o token passou a ser `usuarioId.expiração.assinatura` (HMAC-SHA256, 12 h) e os
+  pools de MySQL são reaproveitados por conta. Antes a sessão vivia na memória do processo, o que não
+  funciona em ambiente serverless.
+
 ## 0.0.1 — 02/10/2026
 
 Primeira versão publicada do painel de administração das bases pedWeb.

@@ -46,7 +46,26 @@ npm install
 npm run dev
 ```
 
-Sobe em <http://localhost:3000> (mude com `ADMIN_PORT`).
+Sobe em <http://localhost:3000> (mude com `ADMIN_PORT`). Copie `.env.example` para `.env` e preencha.
+
+## Deploy na Vercel
+
+O mesmo app Express serve as duas situações: local, `server.ts` acrescenta o Vite e o `listen`; na
+Vercel, [`api/index.ts`](api/index.ts) exporta o app como função e o [`vercel.json`](vercel.json)
+manda todo `/api/*` para ela. O frontend é o `vite build` normal (`dist`).
+
+Como cada requisição pode cair em uma instância diferente, **a sessão não guarda nada no servidor**:
+o token é `usuarioId.expiração.assinatura` (HMAC-SHA256, 12 horas) e a cada chamada o painel relê o
+usuário em `pedweb_admin` e reaproveita o pool da conta de MySQL dele.
+
+Variáveis de ambiente a definir no projeto da Vercel:
+
+| Variável | Para quê |
+| --- | --- |
+| `PAINEL_MYSQL_HOST`, `PAINEL_MYSQL_PORT`, `PAINEL_MYSQL_USER`, `PAINEL_MYSQL_PASSWORD` | conexão do painel com `pedweb_admin` |
+| `SESSION_SECRET` | assina o token de sessão (valor longo e aleatório; sem ele todo deploy derruba as sessões) |
+
+O MySQL precisa aceitar conexão dos IPs da Vercel.
 
 ## Arquitetura
 

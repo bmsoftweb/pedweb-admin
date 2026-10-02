@@ -1,75 +1,14 @@
 import 'dotenv/config';
-import express, { Request, Response } from 'express';
+import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { obterConexao, fecharConexao, listarBases, clonarBase, checkDbHealth } from './server/db';
-import { createCrudRouter, contexto } from './server/crud';
-import { limparCacheMetadados } from './server/schema';
-import { createUsuariosRouter } from './server/usuarios';
-import { createLiberarBasesRouter } from './server/liberarBases';
+import { createApp } from './server/app';
 
-const PORT = Number(process.env.ADMIN_PORT) || 3000;
+/** Execução local (npm run dev / start). Na Vercel quem serve as rotas é api/index.ts */
+const PORT = Number(process.env.ADMIN_PORT) || Number(process.env.PORT) || 3000;
 
 async function startServer() {
-  const app = express();
-  app.use(express.json({ limit: '5mb' }));
-
-  // ==========================================================
-  // 0. Sessão: o login (server/usuarios.ts) é que abre a conexão MySQL do usuário
-  // ==========================================================
-  app.delete('/api/conexao', async (req: Request, res: Response) => {
-    await fecharConexao(String(req.header('x-conexao') || ''));
-    res.json({ success: true });
-  });
-
-  // Login do painel e config_listas em pedweb_admin.usuarios
-  app.use('/api', createUsuariosRouter());
-
-  // Liberação de bases por conta do MySQL (só super usuário)
-  app.use('/api', createLiberarBasesRouter());
-
-  // Bases pedweb* do servidor conectado
-  app.get('/api/bases', async (req: Request, res: Response) => {
-    const token = String(req.header('x-conexao') || '');
-    const c = obterConexao(token);
-    if (!c) return res.status(401).json({ error: 'Conexão expirada. Conecte-se novamente ao servidor MySQL.' });
-    if (!c.usuario) return res.status(401).json({ error: 'Faça login no painel para continuar.' });
-    try {
-      limparCacheMetadados(`${token}|`);
-      res.json(await listarBases(c.pool));
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // Clonar a estrutura de uma base para uma base nova (sem dados)
-  app.post('/api/bases', async (req: Request, res: Response) => {
-    const c = obterConexao(String(req.header('x-conexao') || ''));
-    if (!c) return res.status(401).json({ error: 'Conexão expirada. Conecte-se novamente ao servidor MySQL.' });
-    if (!c.usuario) return res.status(401).json({ error: 'Faça login no painel para continuar.' });
-    if (!c.usuario.super) return res.status(403).json({ error: 'Só o super usuário pode criar bases.' });
-    try {
-      const origem = String(req.body?.origem || '');
-      const nome = String(req.body?.nome || '').trim().toLowerCase();
-      res.json(await clonarBase(c.pool, origem, nome));
-    } catch (err: any) {
-      res.status(400).json({ error: err.sqlMessage || err.message });
-    }
-  });
-
-  app.get('/api/db/status', async (req: Request, res: Response) => {
-    try {
-      const ctx = await contexto(req);
-      res.json(await checkDbHealth(ctx.conexao, ctx.base));
-    } catch (err: any) {
-      res.status(err.status || 400).json({ connected: false, latencyMs: 0, error: err.message });
-    }
-  });
-
-  // ==========================================================
-  // 1. CRUD genérico dirigido pelos metadados da base
-  // ==========================================================
-  app.use('/api', createCrudRouter());
+  const app = createApp();
 
   // ==========================================================
   // VITE / SPA

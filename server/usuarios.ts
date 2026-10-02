@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { BASE_ADMIN, CONFIG_PAINEL, Conexao, abrirConexao, obterConexao, poolPainel, q } from './db';
+import { BASE_ADMIN, CONFIG_PAINEL, poolPainel, q, testarConexao } from './db';
+import { emitirToken, sessaoDaRequisicao } from './sessao';
 
 /**
  * Login do painel e preferências das listas, em pedweb_admin.usuarios — lido pelo pool
@@ -59,7 +60,7 @@ function verifyPasswordMatch(inputPassword: string, storedHash: string): boolean
   );
 }
 
-async function colunasUsuarios(): Promise<string[]> {
+export async function colunasUsuarios(): Promise<string[]> {
   const [rows] = await poolPainel().query<any[]>(
     `SELECT COLUMN_NAME AS nome FROM information_schema.COLUMNS
       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'usuarios' ORDER BY ORDINAL_POSITION`,
@@ -68,7 +69,7 @@ async function colunasUsuarios(): Promise<string[]> {
   return rows.map((r) => String(r.nome));
 }
 
-const primeira = (colunas: string[], candidatas: string[]) => candidatas.find((x) => colunas.includes(x));
+export const primeira = (colunas: string[], candidatas: string[]) => candidatas.find((x) => colunas.includes(x));
 
 /** Valores que significam "sim" nas colunas de marcação da base (1, 'S', true…) */
 const ligado = (valor: unknown) => ['1', 's', 'sim', 'true'].includes(String(valor ?? '').trim().toLowerCase());
@@ -92,10 +93,14 @@ export function ehSuperUsuario(usuario: Record<string, any>, colunas: string[]):
   return marcacao ? ligado(usuario[marcacao]) : false;
 }
 
-function conexaoDaRequisicao(req: Request, res: Response): Conexao | null {
-  const c = obterConexao(String(req.header('x-conexao') || ''));
-  if (!c) res.status(401).json({ error: 'Conexão expirada. Conecte-se novamente ao servidor MySQL.' });
-  return c;
+/** Usuário da sessão; responde 401 e devolve null quando o token não vale mais */
+async function usuarioDaRequisicao(req: Request, res: Response) {
+  try {
+    return (await sessaoDaRequisicao(req)).usuario;
+  } catch (err: any) {
+    res.status(err.status || 401).json({ error: err.message });
+    return null;
+  }
 }
 
 export function createUsuariosRouter() {
@@ -144,32 +149,25 @@ export function createUsuariosRouter() {
         });
       }
 
-      let token: string;
       try {
-        token = await abrirConexao(cred.host, cred.port, cred.user, cred.senha);
+        await testarConexao(cred.host, cred.port, cred.user, cred.senha);
       } catch (err: any) {
         return res.status(401).json({
           error: `Login aceito, mas a conta de MySQL deste usuário (${cred.user}@${cred.host}:${cred.port}) não conectou: ${err.message}`,
         });
       }
 
-      const conexao = obterConexao(token)!;
-      conexao.usuario = {
-        id: String(u[colId]),
-        nome: String(u.nome || u.email || u.login || login),
-        colunaId: colId,
-        super: ehSuperUsuario(u, colunas),
-      };
       res.json({
-        token,
-        host: conexao.host,
-        porta: conexao.port,
-        usuario: conexao.user,
+        // Token assinado: a sessão não ocupa memória do servidor (ver server/sessao.ts)
+        token: emitirToken(String(u[colId])),
+        host: cred.host,
+        porta: cred.port,
+        usuario: cred.user,
         usuarioPainel: {
-          id: conexao.usuario.id,
-          nome: conexao.usuario.nome,
+          id: String(u[colId]),
+          nome: String(u.nome || u.email || u.login || login),
           email: u.email || '',
-          super: conexao.usuario.super,
+          super: ehSuperUsuario(u, colunas),
         },
       });
     } catch (err: any) {
@@ -179,13 +177,12 @@ export function createUsuariosRouter() {
 
   // Preferências das listas (larguras, ordem e colunas visíveis), em usuarios.config_listas
   router.get('/config-listas', async (req: Request, res: Response) => {
-    const c = conexaoDaRequisicao(req, res);
-    if (!c) return;
-    if (!c.usuario) return res.status(401).json({ error: 'Faça login no painel para continuar.' });
+    const usuario = await usuarioDaRequisicao(req, res);
+    if (!usuario) return;
     try {
       const [rows] = await poolPainel().query<any[]>(
-        `SELECT config_listas FROM ${TABELA} WHERE ${q(c.usuario.colunaId)} = ? LIMIT 1`,
-        [c.usuario.id],
+        `SELECT config_listas FROM ${TABELA} WHERE ${q(usuario.colunaId)} = ? LIMIT 1`,
+        [usuario.id],
       );
       let config: Record<string, unknown> = {};
       try {
@@ -200,17 +197,16 @@ export function createUsuariosRouter() {
   });
 
   router.put('/config-listas', async (req: Request, res: Response) => {
-    const c = conexaoDaRequisicao(req, res);
-    if (!c) return;
-    if (!c.usuario) return res.status(401).json({ error: 'Faça login no painel para continuar.' });
+    const usuario = await usuarioDaRequisicao(req, res);
+    if (!usuario) return;
     const corpo = req.body;
     if (!corpo || typeof corpo !== 'object' || Array.isArray(corpo)) {
       return res.status(400).json({ error: 'Configuração inválida.' });
     }
     try {
       const [r] = await poolPainel().query<any>(
-        `UPDATE ${TABELA} SET config_listas = ? WHERE ${q(c.usuario.colunaId)} = ?`,
-        [JSON.stringify(corpo), c.usuario.id],
+        `UPDATE ${TABELA} SET config_listas = ? WHERE ${q(usuario.colunaId)} = ?`,
+        [JSON.stringify(corpo), usuario.id],
       );
       if (!r.affectedRows) return res.status(404).json({ error: 'Usuário da sessão não encontrado.' });
       res.json({ success: true });

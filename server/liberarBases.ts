@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { Conexao, obterConexao, listarBases, q } from './db';
+import { Conexao, listarBases, q } from './db';
+import { sessaoDaRequisicao } from './sessao';
 
 /**
  * Liberação de bases por usuário DO MYSQL (não o usuário do painel): o super usuário
@@ -73,14 +74,12 @@ async function basesLiberadas(c: Conexao, usuario: string, host: string, existen
 
 export function createLiberarBasesRouter() {
   /** Só o super usuário do painel chega aqui */
-  function sessao(req: Request, res: Response): Conexao | null {
-    const c = obterConexao(String(req.header('x-conexao') || ''));
-    if (!c) {
-      res.status(401).json({ error: 'Conexão expirada. Conecte-se novamente ao servidor MySQL.' });
-      return null;
-    }
-    if (!c.usuario) {
-      res.status(401).json({ error: 'Faça login no painel para continuar.' });
+  async function sessao(req: Request, res: Response): Promise<Conexao | null> {
+    let c: Conexao;
+    try {
+      c = await sessaoDaRequisicao(req);
+    } catch (err: any) {
+      res.status(err.status || 401).json({ error: err.message });
       return null;
     }
     if (!c.usuario.super) {
@@ -94,7 +93,7 @@ export function createLiberarBasesRouter() {
 
   // Contas do MySQL do servidor conectado
   router.get('/mysql/usuarios', async (req: Request, res: Response) => {
-    const c = sessao(req, res);
+    const c = await sessao(req, res);
     if (!c) return;
     try {
       const [linhas] = await c.pool.query<any[]>(
@@ -118,7 +117,7 @@ export function createLiberarBasesRouter() {
 
   // Bases que uma conta enxerga hoje
   router.get('/mysql/usuarios/bases', async (req: Request, res: Response) => {
-    const c = sessao(req, res);
+    const c = await sessao(req, res);
     if (!c) return;
     try {
       const usuario = String(req.query.usuario || '');
@@ -132,7 +131,7 @@ export function createLiberarBasesRouter() {
 
   // Aplica as marcações: concede o que falta e revoga o que sobra
   router.put('/mysql/usuarios/bases', async (req: Request, res: Response) => {
-    const c = sessao(req, res);
+    const c = await sessao(req, res);
     if (!c) return;
     try {
       const usuario = String(req.body?.usuario || '');

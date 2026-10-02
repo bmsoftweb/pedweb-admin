@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
-import { Conexao, obterConexao, poolPainel, PREFIXO_BASE, BASE_ADMIN, q } from './db';
+import { Conexao, poolPainel, PREFIXO_BASE, BASE_ADMIN, q } from './db';
+import { sessaoDaRequisicao } from './sessao';
 import {
   FieldDef,
   ResourceDef,
@@ -18,30 +19,19 @@ const PK_SEPARATOR = '~';
 /** Conexão, base e metadados da requisição, resolvidos pelos headers x-conexao e x-base */
 interface Contexto {
   conexao: Conexao;
-  token: string;
   base: string;
   recursos: ResourceDef[];
 }
 
 /** Valida os headers da sessão e carrega os metadados da base escolhida */
 export async function contexto(req: Request): Promise<Contexto> {
-  const token = String(req.header('x-conexao') || '');
-  const conexao = obterConexao(token);
-  if (!conexao) {
-    const err: any = new Error('Conexão expirada ou inexistente. Conecte-se novamente ao servidor MySQL.');
-    err.status = 401;
-    throw err;
-  }
+  const conexao = await sessaoDaRequisicao(req);
   const base = String(req.header('x-base') || '');
-  if (!conexao.usuario) {
-    const err: any = new Error('Faça login no painel para continuar.');
-    err.status = 401;
-    throw err;
-  }
   if (!base.toLowerCase().startsWith(PREFIXO_BASE) || base.toLowerCase() === BASE_ADMIN) {
     throw new Error(`Base de dados inválida: só são administradas bases com prefixo "${PREFIXO_BASE}".`);
   }
-  const daBase = await carregarRecursos(conexao.pool, `${token}|${base}`, base);
+  // O cache dos metadados é por conta de MySQL + base: cada conta enxerga o que pode
+  const daBase = await carregarRecursos(conexao.pool, `${conexao.user}@${conexao.host}|${base}`, base);
   // Usuários do painel (pedweb_admin.usuarios) aparecem junto das tabelas de qualquer base,
   // lidos pelo pool do painel: a conta do usuário não precisa enxergar pedweb_admin
   const admin = conexao.usuario.super
@@ -49,7 +39,7 @@ export async function contexto(req: Request): Promise<Contexto> {
     : [];
   const usuarios = admin.find((r) => r.name === 'usuarios');
   const recursos = usuarios ? [...daBase, recursoUsuariosPainel(usuarios, BASE_ADMIN)] : daBase;
-  return { conexao, token, base, recursos };
+  return { conexao, base, recursos };
 }
 
 /** Converte o valor recebido do formulário para o tipo esperado pela coluna do MySQL */
