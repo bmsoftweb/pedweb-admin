@@ -6,7 +6,7 @@
  * igual. O backend usa o resultado como whitelist de tabelas e colunas.
  */
 import mysql from 'mysql2/promise';
-import { aplicarCadastro } from './cadastros';
+import { aplicarCadastro } from './cadastros.js';
 
 export type FieldType =
   | 'text'

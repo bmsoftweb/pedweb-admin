@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
-import { Conexao, poolPainel, PREFIXO_BASE, BASE_ADMIN, q } from './db';
-import { sessaoDaRequisicao } from './sessao';
+import { Conexao, poolPainel, PREFIXO_BASE, BASE_ADMIN, q } from './db.js';
+import { sessaoDaRequisicao } from './sessao.js';
 import {
   FieldDef,
   ResourceDef,
@@ -10,8 +10,8 @@ import {
   columnNames,
   recursoUsuariosPainel,
   RECURSO_USUARIOS,
-} from './schema';
-import { SENHA_PADRAO, normalizarEmail } from './cadastros';
+} from './schema.js';
+import { SENHA_PADRAO, normalizarEmail } from './cadastros.js';
 
 /** Separador usado para chaves primárias compostas na URL: /api/crud/x/12~34 */
 const PK_SEPARATOR = '~';

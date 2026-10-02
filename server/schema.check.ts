@@ -3,8 +3,8 @@
  *   npx tsx server/schema.check.ts
  */
 import assert from 'assert';
-import { carregarRecursos, recursoUsuariosPainel, columnNames } from './schema';
-import { q } from './db';
+import { carregarRecursos, recursoUsuariosPainel, columnNames } from './schema.js';
+import { q } from './db.js';
 
 const col = (t: string, c: string, dt: string, ct: string, extra = '', nulo = 'NO', def: any = null) => ({
   TABLE_NAME: t, COLUMN_NAME: c, DATA_TYPE: dt, COLUMN_TYPE: ct, IS_NULLABLE: nulo, COLUMN_DEFAULT: def,

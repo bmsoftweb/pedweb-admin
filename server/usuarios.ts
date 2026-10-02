@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { BASE_ADMIN, CONFIG_PAINEL, poolPainel, q, testarConexao } from './db';
-import { emitirToken, sessaoDaRequisicao } from './sessao';
+import { BASE_ADMIN, CONFIG_PAINEL, poolPainel, q, testarConexao } from './db.js';
+import { emitirToken, sessaoDaRequisicao } from './sessao.js';
 
 /**
  * Login do painel e preferências das listas, em pedweb_admin.usuarios — lido pelo pool

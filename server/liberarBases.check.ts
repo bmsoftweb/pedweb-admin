@@ -3,7 +3,7 @@
  *   npx tsx server/liberarBases.check.ts
  */
 import assert from 'assert';
-import { calcularMudancas } from './liberarBases';
+import { calcularMudancas } from './liberarBases.js';
 
 const existentes = ['pedweb_sal', 'pedweb_norte', 'pedweb_sul'];
 

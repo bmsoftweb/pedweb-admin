@@ -3,7 +3,7 @@
  *   npx tsx server/db.check.ts
  */
 import assert from 'assert';
-import { clonarBase } from './db';
+import { clonarBase } from './db.js';
 
 interface Falso {
   bases?: { nome: string }[];

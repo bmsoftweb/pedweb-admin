@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { createApp } from './server/app';
+import { createApp } from './server/app.js';
 
 /** Execução local (npm run dev / start). Na Vercel quem serve as rotas é api/index.ts */
 const PORT = Number(process.env.ADMIN_PORT) || Number(process.env.PORT) || 3000;

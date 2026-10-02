@@ -3,7 +3,7 @@
  *   npx tsx server/sessao.check.ts
  */
 import assert from 'assert';
-import { emitirToken, lerToken } from './sessao';
+import { emitirToken, lerToken } from './sessao.js';
 
 const token = emitirToken('42');
 assert.equal(lerToken(token), '42', 'token válido devolve o id do usuário');

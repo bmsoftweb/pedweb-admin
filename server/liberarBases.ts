@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { Conexao, listarBases, q } from './db';
-import { sessaoDaRequisicao } from './sessao';
+import { Conexao, listarBases, q } from './db.js';
+import { sessaoDaRequisicao } from './sessao.js';
 
 /**
  * Liberação de bases por usuário DO MYSQL (não o usuário do painel): o super usuário

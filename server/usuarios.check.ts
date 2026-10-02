@@ -3,7 +3,7 @@
  *   npx tsx server/usuarios.check.ts
  */
 import assert from 'assert';
-import { ehSuperUsuario } from './usuarios';
+import { ehSuperUsuario } from './usuarios.js';
 
 // A marcação é o papel = 'super' (coluna `nivel` no pedweb_admin)
 const comNivel = ['id', 'nome', 'senha', 'nivel'];

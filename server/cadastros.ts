@@ -6,7 +6,7 @@
  * ele é uma camada sobre o que foi lido do INFORMATION_SCHEMA, para a tela continuar
  * funcionando quando a base tiver colunas a mais ou a menos.
  */
-import { FieldDef, ResourceDef } from './schema';
+import { FieldDef, ResourceDef } from './schema.js';
 
 /** Ajuste de uma coluna; `null` esconde a coluna da tela */
 type Ajuste = Partial<FieldDef> | null;

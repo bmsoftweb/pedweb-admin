@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { Request } from 'express';
-import { BASE_ADMIN, Conexao, poolPainel, poolPara, q } from './db';
-import { colunasUsuarios, credenciaisMysql, ehSuperUsuario, primeira } from './usuarios';
+import { BASE_ADMIN, Conexao, poolPainel, poolPara, q } from './db.js';
+import { colunasUsuarios, credenciaisMysql, ehSuperUsuario, primeira } from './usuarios.js';
 
 /**
  * Sessão sem estado: o token é "usuarioId.expiracao.assinatura" (HMAC-SHA256).

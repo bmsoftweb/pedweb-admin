@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import express, { Request, Response } from 'express';
-import { Conexao, listarBases, clonarBase, checkDbHealth } from './db';
-import { createCrudRouter, contexto } from './crud';
-import { limparCacheMetadados } from './schema';
-import { createUsuariosRouter } from './usuarios';
-import { createLiberarBasesRouter } from './liberarBases';
-import { sessaoDaRequisicao } from './sessao';
+import { Conexao, listarBases, clonarBase, checkDbHealth } from './db.js';
+import { createCrudRouter, contexto } from './crud.js';
+import { limparCacheMetadados } from './schema.js';
+import { createUsuariosRouter } from './usuarios.js';
+import { createLiberarBasesRouter } from './liberarBases.js';
+import { sessaoDaRequisicao } from './sessao.js';
 
 /**
  * App Express com as rotas /api.

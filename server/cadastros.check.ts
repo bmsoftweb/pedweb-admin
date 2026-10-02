@@ -3,7 +3,7 @@
  *   npx tsx server/cadastros.check.ts
  */
 import assert from 'assert';
-import { normalizarEmail, SENHA_PADRAO } from './cadastros';
+import { normalizarEmail, SENHA_PADRAO } from './cadastros.js';
 
 assert.equal(normalizarEmail('  Joao@Empresa.COM.br '), 'joao@empresa.com.br', 'arruma caixa e espaços');
 assert.equal(normalizarEmail('ze.ninguem@empresa.com'), 'ze.ninguem@empresa.com');
